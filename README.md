@@ -97,19 +97,11 @@ no infrastructure to find out.
 
 ## Wire into a project
 
-```sh
-mp-init          # name: vsan-host-metrics, language: Python, adapter kind: VsanHostMetrics
-```
-
-Then, into the generated project:
-
-1. Copy `app/vsanmetrics.py` and `app/constants.py` in as-is.
-2. Open the **generated** `app/adapter.py`, copy its import block over the one
-   at the top of this `adapter.py`, and keep its `main()` dispatch block.
-   The SDK was renamed from `aria` to `vcf` in 9.0 and the package path may
-   have moved; the generated file is ground truth.
-3. Merge the rest of this `adapter.py` in.
-4. Nothing to add to `adapter_requirements.txt` — stdlib only.
+The repository root is the `mp-build` project: `manifest.txt`, `Dockerfile`,
+`commands.cfg`, `adapter_requirements.txt` (the SDK library and pyVmomi),
+`config.json`, `conf/`, `resources/`, `content/`, and the adapter in `app/`.
+They were generated once with `scaffold_project.py` and committed, so there is
+nothing to scaffold or copy. Run the SDK tools from the checkout:
 
 ```sh
 mp-test          # prompts for hosts + token, then prints objects and metrics
@@ -197,7 +189,7 @@ as a command-line option instead of prompting:
 ```sh
 source ~/.mp/bin/activate
 set -a; . ~/harbor.env; set +a          # HARBOR_USER / HARBOR_PASS, mode 600, outside this repo
-mp-build -p ~/vsan-host-metrics --no-ttl \
+mp-build -p . --no-ttl \
   -r "registry.example.com/nickfirefoot/vsanhostmetrics" \
   --registry-username "$HARBOR_USER" \
   --registry-password "$HARBOR_PASS"
