@@ -3,9 +3,10 @@
 #
 # Why this shape:
 # - A .pak does not contain the adapter. adapter.zip!<AdapterKind>.conf names
-#   REGISTRY, REPOSITORY and DIGEST, and the Cloud Proxy pulls that digest
-#   ANONYMOUSLY. So the image must be public, and the signature, attestation
-#   and scan must be on the exact digest the pak names.
+#   REGISTRY, REPOSITORY and DIGEST. Per the VMware SDK documentation, the
+#   Cloud Proxy pulls this digest on first collection, ANONYMOUSLY. So the
+#   image must be public, and the signature, attestation and scan must be on
+#   the exact digest the pak names.
 # - mp-build always builds, pushes, and writes the pushed digest into the pak.
 #   So mp-build is the one build of record; this workflow drives it at GHCR and
 #   reads the digest back out of the pak to scan, sign and attest it.
@@ -433,7 +434,8 @@ jobs:
           set -euo pipefail
           id_re="^https://github\\.com/${GITHUB_REPOSITORY//./\\.}/\\.github/workflows/build-and-publish\\.yml@refs/tags/v"
           cat > notes.md <<EOF
-          Adapter image. The pak names it by digest and the Cloud Proxy pulls it
+          Adapter image. The pak names it by digest. Per the VMware SDK
+          documentation, the Cloud Proxy pulls this digest on first collection,
           from ghcr.io (outbound 443). VCF Operations does not check signatures,
           attestations or scans when it installs a pak; check them yourself:
 
