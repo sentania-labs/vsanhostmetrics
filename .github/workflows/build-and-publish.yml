@@ -53,7 +53,7 @@ jobs:
     # the SDK base, the unit tests pass inside it, it has no fixable HIGH or
     # CRITICAL vulnerability, and the adapter answers adapterDefinition, which
     # is what mp-build needs at release time.
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -153,7 +153,7 @@ jobs:
     # security events. Runs no repository code, only uploads the report.
     needs: verify
     if: ${{ !cancelled() && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
@@ -178,7 +178,7 @@ jobs:
   publish:
     needs: verify
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write          # push the image, its signature and attestation to ghcr.io/<owner>/<repo>
@@ -412,7 +412,7 @@ jobs:
   release:
     # The only job that can write to the repo, and it runs no build code.
     needs: publish
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
