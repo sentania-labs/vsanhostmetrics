@@ -13,11 +13,14 @@
 # - Pull requests (including from forks) only run `verify`, with a read-only
 #   token. Nothing is published except from a v* tag pushed to this repo.
 #
-# Releasing: bump "version" in manifest.txt, merge to a release branch
-# (RELEASE_BRANCHES below), then
-#   git tag v<version> && git push origin v<version>
-# A tag vX.Y.Z-rc.N (same X.Y.Z as manifest.txt) publishes a prerelease and may
-# come from any branch.
+# Releasing: merge to a release branch (RELEASE_BRANCHES below), then
+#   git tag vX.Y.Z && git push origin vX.Y.Z
+# The tag sets the version. The publish job writes X.Y.Z into manifest.txt in
+# the runner's working copy before mp-build (never committed), so the pak is
+# named and versioned X.Y.Z. The committed manifest.txt stays at the last
+# released version for hand builds; there is nothing to bump before tagging.
+# A tag vX.Y.Z-rc.N publishes a prerelease and may come from any branch; its
+# pak carries version X.Y.Z, and its Release and image tag keep the full name.
 #
 # Verifying a release: see "Build and release" in README.md.
 name: build-and-publish
@@ -208,10 +211,6 @@ jobs:
             echo "::error::Tag $tag is not vX.Y.Z or vX.Y.Z-rc.N"; exit 1
           fi
           ver="${BASH_REMATCH[1]}"; rc="${BASH_REMATCH[2]}"
-          mver="$(python3 -c 'import json; print(json.load(open("manifest.txt"))["version"])')"
-          if [ "$ver" != "$mver" ]; then
-            echo "::error::Tag $tag does not match manifest.txt version $mver. Bump manifest.txt, merge, re-tag."; exit 1
-          fi
           if [ -z "$rc" ]; then
             on=""
             for b in $RELEASE_BRANCHES; do
@@ -228,6 +227,7 @@ jobs:
           {
             echo "image=ghcr.io/${GITHUB_REPOSITORY,,}"
             echo "image_tag=${tag#v}"
+            echo "version=$ver"
             echo "prerelease=$([ -n "$rc" ] && echo true || echo false)"
           } >> "$GITHUB_OUTPUT"
 
@@ -261,6 +261,30 @@ jobs:
       - name: Install the SDK CLI
         run: python -m pip install --disable-pip-version-check "vmware-aria-operations-integration-sdk==${SDK_VERSION}"
 
+      - name: Stamp the manifest version from the tag (runner copy only, never committed)
+        working-directory: ${{ env.PROJECT_DIR }}
+        env:
+          VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - "$VERSION" <<'EOF'
+          import json, sys
+          version = sys.argv[1]
+          with open("manifest.txt", encoding="utf-8") as f:
+              manifest = json.load(f)
+          if "version" not in manifest:
+              sys.exit("manifest.txt has no version field to stamp")
+          committed = manifest["version"]
+          manifest["version"] = version
+          with open("manifest.txt", "w", encoding="utf-8") as f:
+              json.dump(manifest, f, indent=4, ensure_ascii=False)
+              f.write("\n")
+          with open("manifest.txt", encoding="utf-8") as f:
+              if json.load(f)["version"] != version:
+                  sys.exit("manifest.txt did not take the stamped version")
+          print(f"manifest.txt version {committed} -> {version} (this runner only; the committed file is unchanged)")
+          EOF
+
       - name: mp-build (builds, pushes to GHCR, writes the digest into the pak)
         env:
           IMAGE: ${{ steps.tag.outputs.image }}
@@ -276,16 +300,20 @@ jobs:
         working-directory: ${{ env.PROJECT_DIR }}
         env:
           IMAGE: ${{ steps.tag.outputs.image }}
+          VERSION: ${{ steps.tag.outputs.version }}
         run: |
           set -euo pipefail
           shopt -s nullglob
           paks=(build/*.pak)
           [ "${#paks[@]}" -eq 1 ] || { echo "::error::expected one pak in build/, found ${#paks[@]}"; exit 1; }
-          digest="$(python3 - "${paks[0]}" "$IMAGE" <<'EOF'
+          digest="$(python3 - "${paks[0]}" "$IMAGE" "$VERSION" <<'EOF'
           import io, json, re, sys, zipfile
-          pak, image = sys.argv[1:]
+          pak, image, version = sys.argv[1:]
           with zipfile.ZipFile(pak) as z:
-              kind = json.loads(z.read("manifest.txt"))["adapter_kinds"][0]
+              manifest = json.loads(z.read("manifest.txt"))
+              if manifest.get("version") != version:
+                  sys.exit(f"pak manifest version {manifest.get('version')!r}, expected {version} from the tag")
+              kind = manifest["adapter_kinds"][0]
               with zipfile.ZipFile(io.BytesIO(z.read("adapter.zip"))) as a:
                   conf = a.read(kind + ".conf").decode()
           f = dict(l.split("=", 1) for l in conf.splitlines() if "=" in l)

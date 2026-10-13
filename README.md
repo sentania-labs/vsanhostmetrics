@@ -184,23 +184,29 @@ the adapter image, run `test_perfsvc.py`, `test_vsanmetrics.py` and
 `test_adapter.py` inside it, scan it with Trivy and boot it. Nothing is
 published.
 
-To release, bump `version` in `manifest.txt`, merge to the release branch
-(`agent/beta-vsan-host-metrics`, or `main`; the workflow's `RELEASE_BRANCHES`
-lists both), then:
+To release, merge to the release branch (`agent/beta-vsan-host-metrics`, or
+`main`; the workflow's `RELEASE_BRANCHES` lists both), then:
 
 ```
 git tag v1.4.7 && git push origin v1.4.7
 ```
+
+The tag sets the version. The workflow writes it into `manifest.txt` on the
+runner before `mp-build`, so there is nothing to bump before tagging; the
+stamped file is never committed. The committed `manifest.txt` stays at the
+last released version, which is what a hand-run `mp-build` uses.
 
 The workflow runs `mp-build` against `ghcr.io/nickfirefoot/vsanhostmetrics`,
 scans the pushed image, signs the image and the pak with cosign (keyless: no
 keys or secrets to manage), attests both with GitHub build provenance, tags
 the image `1.4.7`, and creates a GitHub Release with the pak, its signature
 bundle (`.pak.sigstore.json`) and `SHA256SUMS`. A `v1.4.7-rc.1` tag publishes
-a prerelease and may come from any branch. A version that already exists in
-GHCR is refused; release a new patch version instead. The workflow passes
-the registry to `mp-build` itself; `config.json` names the same repository
-for local builds.
+a prerelease and may come from any branch. Its pak carries version `1.4.7`
+(`VsanHostMetrics_1.4.7.pak`); the Release is named `v1.4.7-rc.1` and the image is
+tagged `1.4.7-rc.1`.
+A version that already exists in GHCR is refused; release a new patch version
+instead. The workflow passes the registry to `mp-build` itself; `config.json`
+names the same repository for local builds.
 
 One-time setup: if the first release stops at the anonymous pull check, the
 new GHCR package was created private. Make it public (package settings,
