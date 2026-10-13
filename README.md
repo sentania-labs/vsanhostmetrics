@@ -214,9 +214,10 @@ entry expires, and the scan fails again until it is reviewed.
 
 ### Verifying what you install
 
-VCF Operations checks none of this. Installing the pak makes the Cloud Proxy
-pull the image digest named in the pak straight from GHCR, with no signature,
-attestation or vulnerability check. Verify that digest yourself:
+VCF Operations checks none of this. The pak names an image digest in GHCR.
+Per the VMware SDK documentation, the Cloud Proxy pulls this digest on first
+collection, straight from GHCR, with no signature, attestation or
+vulnerability check. Verify that digest yourself:
 
 1. Read what the pak points at (`REGISTRY`, `REPOSITORY`, `DIGEST`):
 
