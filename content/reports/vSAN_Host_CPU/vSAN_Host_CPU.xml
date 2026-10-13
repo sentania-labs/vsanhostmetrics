@@ -2,7 +2,7 @@
 <Content>
     <Views>
         <ViewDef id="b874b70d-0372-5ae5-add1-6791a6327894">
-            <Title>vSAN Host CPU</Title>
+            <Title>vSAN Host CPU [VHM]</Title>
             <Description />
             <SubjectType adapterKind="VsanHostMetrics" resourceKind="VsanHostCpu" type="descendant" />
             <SubjectType adapterKind="VsanHostMetrics" resourceKind="VsanHostCpu" type="self" />
