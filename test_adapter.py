@@ -9,6 +9,7 @@ second was hidden by the first for three releases.
 Run: python3 test_adapter.py
 """
 import sys
+from unittest.mock import patch
 
 # AdapterInstance.from_input defaults to sys.argv[-2], evaluated at class
 # definition time, so importing the adapter needs two argv entries.
@@ -114,6 +115,38 @@ def test_objects_without_uniqueness_identifiers_are_skipped():
                 "value": "n"}]}}]
     c = _Client({"HostSystem": bad})
     assert adapter._resource_index(c, "VMWARE", "HostSystem") == {}
+
+
+def test_collect_reports_exception_and_disconnects():
+    session = object()
+    with patch.object(adapter, "_connect", return_value=(session, [object()], {})), \
+         patch.object(adapter, "_safe_disconnect") as disconnect:
+        result = adapter.collect(object())
+    assert "KeyError" in result.get_json()["errorMessage"]
+    disconnect.assert_called_once_with(session)
+
+
+def test_main_does_not_mask_dispatch_failure():
+    with patch.object(adapter.logging, "setup_logging"), \
+         patch.object(adapter.logging, "rotate"), \
+         patch.object(adapter.AdapterInstance, "from_input", side_effect=RuntimeError("dispatch failed")):
+        try:
+            adapter.main(["collect", "input", "output"])
+        except RuntimeError as exc:
+            assert str(exc) == "dispatch failed"
+        else:
+            raise AssertionError("dispatch failure was masked")
+
+
+def test_main_unknown_method_exits_nonzero():
+    with patch.object(adapter.logging, "setup_logging"), \
+         patch.object(adapter.logging, "rotate"):
+        try:
+            adapter.main(["unknown", "input", "output"])
+        except SystemExit as exc:
+            assert exc.code == 1
+        else:
+            raise AssertionError("unknown method did not fail")
 
 
 if __name__ == "__main__":

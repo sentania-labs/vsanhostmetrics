@@ -626,6 +626,9 @@ def collect(adapter_instance: AdapterInstance) -> CollectResult:
                 # collision survived a green test suite.
                 logger.warning("%d collection problem(s); first few: %s",
                                len(total_problems), total_problems[:5])
+        except Exception as exc:                    # noqa: BLE001
+            logger.exception("Collection failed")
+            result.with_error(f"{type(exc).__name__}: {exc}")
         finally:
             _safe_disconnect(si)
 
@@ -679,7 +682,6 @@ def main(argv: List[str]) -> None:
             sys.exit(1)
     finally:
         logger.info(Timer.graph())
-        sys.exit(0)
 
 
 if __name__ == "__main__":
